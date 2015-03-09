@@ -14,7 +14,11 @@ namespace UnityStandardAssets.Characters.ThirdPerson
         private bool m_Jump;                      // the world-relative desired move direction, calculated from the camForward and user input.
 
         public float m_ZAxisFixed = 0F;
-        public float m_CameraDampTime = 0.1F;
+
+        public string jumpKey;
+        public string hAxis;
+        public string walkKey;
+        public string crouchKey;
         
         private void Start()
         {
@@ -35,18 +39,18 @@ namespace UnityStandardAssets.Characters.ThirdPerson
         }
 
 
-        private Vector3 cameraVelRef = Vector3.zero;
+        // private Vector3 cameraVelRef = Vector3.zero;
         private void Update()
         {
             if (!m_Jump)
             {
-                m_Jump = CrossPlatformInputManager.GetButtonDown("Jump");
+                m_Jump = Input.GetKeyDown(jumpKey);
             }
             
             transform.position = new Vector3(transform.position.x, transform.position.y, m_ZAxisFixed);
-            var end = new Vector3(transform.position.x, transform.position.y + 2F, m_Cam.transform.position.z);
-            var begin = new Vector3(m_Cam.transform.position.x, m_Cam.transform.position.y, m_Cam.transform.position.z);
-            m_Cam.transform.position = Vector3.SmoothDamp(begin, end, ref cameraVelRef, m_CameraDampTime);            
+            // var end = new Vector3(transform.position.x, transform.position.y + 2F, m_Cam.transform.position.z);
+            // var begin = new Vector3(m_Cam.transform.position.x, m_Cam.transform.position.y, m_Cam.transform.position.z);
+            // m_Cam.transform.position = Vector3.SmoothDamp(begin, end, ref cameraVelRef, m_CameraDampTime);            
         }
 
 
@@ -54,10 +58,10 @@ namespace UnityStandardAssets.Characters.ThirdPerson
         private void FixedUpdate()
         {
             // read inputs
-            float h = CrossPlatformInputManager.GetAxis("Horizontal");
+            float h = CrossPlatformInputManager.GetAxis(hAxis);
             // float v = CrossPlatformInputManager.GetAxis("Vertical");
             var v = 0F;
-            bool crouch = Input.GetKey(KeyCode.C);
+            bool crouch = Input.GetKey(crouchKey);
 
             // calculate move direction to pass to character
             if (m_Cam != null)
@@ -73,7 +77,7 @@ namespace UnityStandardAssets.Characters.ThirdPerson
             }
 #if !MOBILE_INPUT
 			// walk speed multiplier
-	        if (Input.GetKey(KeyCode.LeftShift)) m_Move *= 0.5f;
+	        if (Input.GetKey(walkKey)) m_Move *= 0.5f;
 #endif
 
             // pass all parameters to the character control script
