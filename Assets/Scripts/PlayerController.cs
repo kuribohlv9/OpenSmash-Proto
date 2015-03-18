@@ -3,49 +3,29 @@ using System.Collections;
 
 public class PlayerController : MonoBehaviour {
 
-    Animator animator;
+    public Animator m_Animator;
 
-    public bool normalControl = true;
+    public bool m_NormalControl = true;
 
-    public float speed = 1.0f;
+    public float m_MovementSpeed = 1.0f;
 
-    void Start()
-    {
-        animator = transform.gameObject.GetComponent<Animator>();
+    public KeyCode m_LeftKey;
+    public KeyCode m_RightKey;
+
+    void Start() {
+        if (m_Animator == null) m_Animator = transform.gameObject.GetComponent<Animator>();
     }
 
-    void Update()
-    {
-        if (normalControl)
-        {
-            if (Input.GetKey(KeyCode.RightArrow))
-            {
-
-                transform.rotation = Quaternion.Euler(new Vector3(0, -90, 0));
-
-                transform.position += transform.forward * Time.deltaTime * speed;
-
-                animator.SetBool("Forward", true);
-            }
-            if (Input.GetKeyUp(KeyCode.RightArrow))
-            {
-                transform.rotation = Quaternion.Euler(new Vector3(0, 0, 0));
-                animator.SetBool("Forward", false);
-
-            }
-            if (Input.GetKey(KeyCode.LeftArrow))
-            {
-
-                transform.rotation = Quaternion.Euler(new Vector3(0, 90, 0));
-
-                transform.position += transform.forward * Time.deltaTime * speed;
-
-                animator.SetBool("Forward", true);
-            }
-            if (Input.GetKeyUp(KeyCode.LeftArrow))
-            {
-                transform.rotation = Quaternion.Euler(new Vector3(0, 0, 0));
-                animator.SetBool("Forward", false);
+    void Update() {
+        if (m_NormalControl) {
+            bool rightArrow = Input.GetKey(m_RightKey);
+            bool leftArrow = Input.GetKey(m_LeftKey);
+            if (rightArrow ^ leftArrow) {
+                transform.rotation = Quaternion.Euler(new Vector3(0, leftArrow ? -90 : 90, 0));
+                transform.position += transform.forward * Time.deltaTime * m_MovementSpeed;
+                m_Animator.SetBool("Forward", true);
+            } else {
+                m_Animator.SetBool("Forward", false);
             }
         }
     }
