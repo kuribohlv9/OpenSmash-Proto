@@ -11,7 +11,7 @@ public class PlayerController : MonoBehaviour {
 
     public float m_MovementSpeed = 1.0f;
 
-    public float m_Gravity = 1.0f;
+    public Vector3 m_MaxVelocity;
 
     public KeyCode m_LeftKey;
     public KeyCode m_RightKey;
@@ -34,7 +34,17 @@ public class PlayerController : MonoBehaviour {
             }
         }
 
-        m_Rigidbody.velocity = new Vector3(0, -m_Gravity, 0);
+        var newVel = m_Rigidbody.velocity;
+        if (!Mathf.Approximately(0f, m_MaxVelocity.x)) {
+            newVel.x = Mathf.Clamp(newVel.x, -m_MaxVelocity.x, m_MaxVelocity.x);
+        }
+        if (!Mathf.Approximately(0f, m_MaxVelocity.y)) {
+            newVel.y = Mathf.Clamp(newVel.y, -m_MaxVelocity.y, m_MaxVelocity.y);
+        }
+        if (!Mathf.Approximately(0f, m_MaxVelocity.z)) {
+            newVel.z = Mathf.Clamp(newVel.z, -m_MaxVelocity.z, m_MaxVelocity.z);
+        }
+        m_Rigidbody.velocity = newVel;
         
     }
 
