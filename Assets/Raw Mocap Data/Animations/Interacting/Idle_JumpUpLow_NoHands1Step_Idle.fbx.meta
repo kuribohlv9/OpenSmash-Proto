@@ -178,19 +178,19 @@ ModelImporter:
     - serializedVersion: 16
       name: Idle_JumpUpLow_NoHands1Step_Idle
       takeName: _206_Idle_JumpUpLow_NoHands1Step_Idle
-      firstFrame: 55
-      lastFrame: 275
+      firstFrame: 179
+      lastFrame: 179
       wrapMode: 0
       orientationOffsetY: 0
       level: 0
       cycleOffset: 0
       loop: 0
-      loopTime: 0
-      loopBlend: 0
+      loopTime: 1
+      loopBlend: 1
       loopBlendOrientation: 0
-      loopBlendPositionY: 0
+      loopBlendPositionY: 1
       loopBlendPositionXZ: 0
-      keepOriginalOrientation: 0
+      keepOriginalOrientation: 1
       keepOriginalPositionY: 1
       keepOriginalPositionXZ: 0
       heightFromFeet: 0

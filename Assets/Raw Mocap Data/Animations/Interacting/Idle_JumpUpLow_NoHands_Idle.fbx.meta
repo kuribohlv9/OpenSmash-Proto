@@ -178,8 +178,8 @@ ModelImporter:
     - serializedVersion: 16
       name: Idle_JumpUpLow_NoHands_Idle
       takeName: _205_Idle_JumpUpLow_NoHands_Idle
-      firstFrame: 142
-      lastFrame: 385
+      firstFrame: 257
+      lastFrame: 257
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

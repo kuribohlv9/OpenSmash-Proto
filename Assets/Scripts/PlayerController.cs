@@ -12,9 +12,13 @@ public class PlayerController : MonoBehaviour {
     public float m_MovementSpeed = 1.0f;
 
     public Vector3 m_MaxVelocity;
+    public float jumpHeight = 1.0f;
 
     public KeyCode m_LeftKey;
     public KeyCode m_RightKey;
+    public KeyCode m_JumpKey;
+
+    public bool canJump;
 
     void Start() {
         if (m_Animator == null) m_Animator = transform.gameObject.GetComponent<Animator>();
@@ -32,6 +36,14 @@ public class PlayerController : MonoBehaviour {
             } else {
                 m_Animator.SetBool("Forward", false);
             }
+
+            bool jumpButton = Input.GetKeyDown(m_JumpKey);
+            if(jumpButton && canJump){
+                m_Rigidbody.AddForce(new Vector3(0, jumpHeight/8000, 0));
+                canJump = false;
+                m_Animator.SetBool("In Air", true);
+            }
+
         }
 
         var newVel = m_Rigidbody.velocity;
@@ -46,6 +58,14 @@ public class PlayerController : MonoBehaviour {
         }
         m_Rigidbody.velocity = newVel;
         
+    }
+
+    void OnCollisionEnter(Collision collision) {
+        if (collision.gameObject.tag == "Platform")
+        {
+            canJump = true;
+            m_Animator.SetBool("In Air", false);
+        }
     }
 
 }
