@@ -18,7 +18,7 @@ public class PlayerController : MonoBehaviour {
     public KeyCode m_RightKey;
     public KeyCode m_JumpKey;
 
-    public bool canJump;
+    public bool m_CanJump;
 
     void Start() {
         if (m_Animator == null) m_Animator = transform.gameObject.GetComponent<Animator>();
@@ -38,9 +38,9 @@ public class PlayerController : MonoBehaviour {
             }
 
             bool jumpButton = Input.GetKeyDown(m_JumpKey);
-            if(jumpButton && canJump){
+            if(jumpButton && m_CanJump){
                 m_Rigidbody.AddForce(new Vector3(0, jumpHeight/8000, 0));
-                canJump = false;
+                m_CanJump = false;
                 m_Animator.SetBool("In Air", true);
             }
 
@@ -63,7 +63,7 @@ public class PlayerController : MonoBehaviour {
     void OnCollisionEnter(Collision collision) {
         if (collision.gameObject.tag == "Platform")
         {
-            canJump = true;
+            m_CanJump = true;
             m_Animator.SetBool("In Air", false);
         }
     }
