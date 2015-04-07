@@ -7,12 +7,9 @@ public class GameGUI : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		for (int i = 0; i < 4; i++)
+		foreach(GameObject p in GameObject.FindGameObjectsWithTag("Player"))
 		{
-			if (GameObject.Find("P" + i))
-			{
-				player.Add(GameObject.Find("P" + i).GetComponent<Controller>());
-			}
+			player.Add(p.GetComponent<Controller>());
 		}
 	}
 	
@@ -20,11 +17,15 @@ public class GameGUI : MonoBehaviour {
 		int border = 20;
 		int width = (Screen.width - border*2) / 4;
 		int height = 24;
-		int y = Screen.height - border - height*2;
+		int y = Screen.height - border - height*3;
 		for (int i = 0; i < player.Count; i++)
 		{
 			GUI.Label(new Rect(border + width * i, y, width, height), "Player " + i);
 			GUI.Label(new Rect(border + width * i, y + height, width, height), (player[i].damage*100).ToString("0") + "%");
+			for (int l = 0; l < player[i].lives; l++)
+			{
+				GUI.Label(new Rect(border + width * i + (width/16) * l, y + height*2, width, height), "○");
+			}
 		}
 	}
 }

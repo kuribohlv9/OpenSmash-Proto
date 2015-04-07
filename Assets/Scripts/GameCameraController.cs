@@ -6,7 +6,7 @@ namespace OpenSmash {
     public class GameCameraController : MonoBehaviour {
 
         public Camera m_Camera; // the camera
-        public GameObject[] m_Targets; // targets to encapsulate (must have a collider)
+        private GameObject[] m_Targets; // targets to encapsulate (must have a collider)
         public float m_CameraSmoothTime = 1f; // smoothing time for camera zoom
         public Vector3 m_Origin; // origin point (0, 0, 0)
         public float m_MinDistance; // minimum distance from targets
@@ -17,6 +17,8 @@ namespace OpenSmash {
         public Rect m_BoundingRect; // never go outside this, if area of rect is 0 then ignore
 
         void Start() {
+            m_Targets = GameObject.FindGameObjectsWithTag("Player");
+
             // set up camera
             if (m_Camera == null) {
                 m_Camera = Camera.main;
