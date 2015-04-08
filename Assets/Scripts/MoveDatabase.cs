@@ -18,14 +18,14 @@ public class MoveDatabase : MonoBehaviour {
 		moves.Add(new Move());
 		move = moves[moves.Count-1];
 		move.name = "Punch Right";
-		move.duration = 0.2f;
+		move.duration = 0.25f;
 		move.damage = 10f;
 		move.forwardForce = 150;
 
 		moves.Add(new Move());
 		move = moves[moves.Count-1];
 		move.name = "Kick";
-		move.duration = 0.2f;
+		move.duration = 0.4f;
 		move.damage = 15f;
 		move.reach = 1;
 		move.forwardForce = 250;

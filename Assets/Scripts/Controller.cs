@@ -11,7 +11,7 @@ public class Controller : MonoBehaviour {
 	private CapsuleCollider collider;
 	private Animator animator;
 
-	private MoveDatabase moveDatabase = new MoveDatabase();
+	private MoveDatabase moveDatabase;
 	public Move[] moves = new Move[3];
 	public float comboGap = 0;
 	public int comboChain = 0;
@@ -147,36 +147,15 @@ public class Controller : MonoBehaviour {
 			moveSpeed = moveSpeedBase * crouchSpeed;
 		}
 
-	//Animations
-		if (onGround)
-		{
-			animator.SetBool("In Air", false);
-		}
-		if (crouching && (onGround || !moving))
-		{
-			//crouch idle
-		}
-		else if (!moving && !crouching && onGround)
-		{
-			animator.SetBool("Forward", false);
-		}
-		else if (moving && onGround)
-		{
-			animator.SetBool("Forward", true);
-		}
-		else if (!onGround)
-		{
-			animator.SetBool("In Air", true);
-		}
-		else
-		{
-			animator.SetBool("Forward", false);
-		}
-
 		if (transform.position.y < -20)
 		{
 			StartCoroutine("Respawn");
 		}
+
+	//Animations
+		animator.SetBool("Forward", moving);
+		//animator.SetBool("Crouch", crouching);
+		animator.SetBool("In Air", !onGround);
 	}
 
 	void OnCollisionStay (Collision col) {
@@ -197,6 +176,17 @@ public class Controller : MonoBehaviour {
 			canJump = false;
 		}
 	}
+
+	public void OnAnimatorMove()
+	{
+		if (onGround && Time.deltaTime > 0)
+		{
+			Vector3 v = (animator.deltaPosition * moveSpeed) / Time.deltaTime;
+			v.y = rigidbody.velocity.y;
+			//rigidbody.velocity = v;
+		}
+	}
+
 
 	void AddDamage (float amount) {
 		damage += amount;
