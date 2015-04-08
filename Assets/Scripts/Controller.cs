@@ -11,16 +11,16 @@ public class Controller : MonoBehaviour {
 	private CapsuleCollider collider;
 	private Animator animator;
 
+	public int playerNumber = 0;
+
 	private MoveDatabase moveDatabase;
 	public Move[] moves = new Move[3];
 	public float comboGap = 0;
 	public int comboChain = 0;
 
-	public int playerNumber = 0;
-
 	public float damage = 0;
 	public int lives = 4;
-	public bool alive = true;
+	public bool isAlive = true;
 
 	private string horizontal;
 	private string jump;
@@ -84,7 +84,7 @@ public class Controller : MonoBehaviour {
 	void Update () {
 		if (comboGap > 0) comboGap -= Time.deltaTime;
 		else comboChain = 0;
-		if (!alive) return;
+		if (!isAlive) return;
 	//Jumping
 		if (Input.GetButtonDown(jump) && canJump)
 		{
@@ -193,13 +193,13 @@ public class Controller : MonoBehaviour {
 	}
 
 	private IEnumerator Respawn () {
-		alive = false;
+		isAlive = false;
 		damage = 0;
 		lives--;
 		yield return new WaitForSeconds(2);
 		transform.position = spawn.position;
 		transform.rotation = Quaternion.identity;
-		alive = true;
+		isAlive = true;
 	}
 
 	private IEnumerator Attack () {

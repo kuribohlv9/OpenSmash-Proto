@@ -44,7 +44,7 @@ namespace OpenSmash {
             }
             // add in the other targets
             for (var i = 1; i < m_Targets.Length; ++i) {
-                if (m_Targets[i] == null) continue;
+                if (m_Targets[i] == null || !m_Targets[i].GetComponent<Controller>().isAlive) continue;
                 var target = m_Targets[i].GetComponent<Collider>().bounds;
                 var center = target.center;
                 var extent = target.extents;
