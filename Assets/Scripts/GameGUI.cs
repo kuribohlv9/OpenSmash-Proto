@@ -3,13 +3,13 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class GameGUI : MonoBehaviour {
-	public List<Controller> player = new List<Controller>();
+	public List<PlayerController> player = new List<PlayerController>();
 
 	// Use this for initialization
 	void Start () {
 		foreach(GameObject p in GameObject.FindGameObjectsWithTag("Player"))
 		{
-			player.Add(p.GetComponent<Controller>());
+			player.Add(p.GetComponent<PlayerController>());
 		}
 	}
 	

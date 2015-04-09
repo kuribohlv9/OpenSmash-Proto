@@ -2,99 +2,223 @@
 using System.Collections;
 
 public class PlayerController : MonoBehaviour {
+	private Transform rightHand;
+	private Transform leftHand;
+	private Transform attackPoint;
+	private Transform spawn;
 
-	public Animator m_Animator;
-	public Rigidbody m_Rigidbody;
-	public CapsuleCollider m_Collider;
+	private Rigidbody m_Rigidbody = new Rigidbody();
+	private CapsuleCollider m_Collider = new CapsuleCollider();
+	private Animator animator;
 
-	public bool m_NormalControl = true;
+	public int playerNumber = 0;
 
-	public float m_MovementSpeed = 1.0f;
-	public float m_CrouchSpeed = 0.5f;
+	private MoveDatabase moveDatabase;
+	public Move[] moves = new Move[3];
+	public float comboGap = 0;
+	public int comboChain = 0;
 
-	public Vector3 m_MaxVelocity;
-	public float jumpHeight = 1.0f;
-	public float standHeight = 1.8f;
-	public float crouchHeight = 1.0f;
+	public float damage = 0;
+	public int lives = 4;
+	public bool isAlive = true;
 
+	private string horizontal;
+	private string jump;
+	private string crouch;
+	private string attack;
+	private string special;
+	private string shield;
+
+	public float moveSpeedBase = 1;
+	private float moveSpeed = 1;
+	public float dashSpeed = 1.33f;
+	public float crouchSpeed = 0.66f;
+
+	private float standHeight;
+	public float crouchHeight = 1f;
+	public float jumpPower = 400f;
+
+	public bool onGround = true;
+	public bool canJump = true;
+	public bool moving = false;
 	public bool crouching = false;
+	public bool hasAirControl = true;
+	public bool canAttack = true;
 
-	public KeyCode m_LeftKey;
-	public KeyCode m_RightKey;
-	public KeyCode m_JumpKey;
-	public KeyCode m_CrouchKey;
+	void Start () {
+		moveDatabase = Camera.main.GetComponent<MoveDatabase>();
+		moves[0] = moveDatabase.Get("Punch Left");
+		moves[1] = moveDatabase.Get("Punch Left");
+		moves[2] = moveDatabase.Get("Kick");
 
-	public bool m_IsGrounded;
+		m_Rigidbody = GetComponent<Rigidbody>();
+		m_Collider = GetComponent<CapsuleCollider>();
+		animator = GetComponent<Animator>();
+		standHeight = m_Collider.height;
 
-	void Start() {
-		if (m_Animator == null) m_Animator = GetComponent<Animator>();
-		if (m_Rigidbody == null) m_Rigidbody = GetComponent<Rigidbody>();
-		if (m_Collider == null) m_Collider = GetComponent<CapsuleCollider>();
+		foreach (Transform child in GetComponentsInChildren<Transform>())
+		{
+			if (child.name.Contains("Hand"))
+			{
+				if (child.name.Contains("Left"))
+				{
+					leftHand = child;
+				}
+				else if (child.name.Contains("Right"))
+				{
+					rightHand = child;
+				}
+			}
+		}
+		attackPoint = transform.Find("AttackPoint");
+		spawn = GameObject.Find("Player Spawn").transform;
+
+		horizontal = "Horizontal " + playerNumber;
+		jump = "Jump " + playerNumber;
+		crouch = "Crouch " + playerNumber;
+		attack = "Attack " + playerNumber;
+		special = "Special " + playerNumber;
+		shield = "Shield " + playerNumber;
+	}
+	
+	void Update () {
+		if (comboGap > 0) comboGap -= Time.deltaTime;
+		else comboChain = 0;
+		if (!isAlive) return;
+	//Jumping
+		if (Input.GetButtonDown(jump) && canJump)
+		{
+			onGround = false;
+			m_Rigidbody.AddForce(new Vector3(0, 1, 0) * jumpPower);
+		}
+
+	//Crouching
+		if (Input.GetButton(crouch))
+		{
+			crouching = true;
+			m_Collider.height = crouchHeight;
+			m_Collider.center = Vector3.up * m_Collider.height/2;
+			moveSpeed = moveSpeedBase;
+		}
+		else if ((Input.GetButtonUp(crouch)))
+		{
+			crouching = false;
+			m_Collider.height = standHeight;
+			m_Collider.center = Vector3.up * m_Collider.height/2;
+			moveSpeed = moveSpeedBase * crouchSpeed;
+		}
+		attackPoint.localPosition = Vector3.up * m_Collider.height * 0.6f;
+
+	//Running
+		if (Input.GetButton(horizontal))
+		{
+			moving = true;
+			m_Rigidbody.velocity = new Vector3(Input.GetAxis(horizontal) * moveSpeed * Time.deltaTime * 250, m_Rigidbody.velocity.y, 0);
+
+			if (Input.GetAxis(horizontal) > 0)
+			{
+				transform.eulerAngles = Vector3.up * 90;
+			}
+			else
+			{
+				transform.eulerAngles = Vector3.up * 270;
+			}
+		}
+		else
+		{
+			moving = false;
+			if (hasAirControl || onGround)
+			{
+				m_Rigidbody.velocity = new Vector3(0, m_Rigidbody.velocity.y, 0);
+			}
+		}
+
+	//Attacking
+		if (Input.GetButtonDown(attack) && canAttack)
+		{
+			if (comboGap > 0) comboChain = (comboChain+1) % moves.Length;
+			StartCoroutine("Attack");
+		}
+
+		if (transform.position.y < -20)
+		{
+			StartCoroutine("Respawn");
+		}
+
+	//Animations
+		animator.SetBool("Forward", moving);
+		//animator.SetBool("Crouch", crouching);
+		animator.SetBool("In Air", !onGround);
 	}
 
-	void Update() {
-		if (m_NormalControl) 
+	void OnCollisionStay (Collision col) {
+		if (col.gameObject.tag == "Platform")
 		{
-			bool rightArrow = Input.GetKey(m_RightKey);
-			bool leftArrow = Input.GetKey(m_LeftKey);
-			if (rightArrow ^ leftArrow)
+			onGround = true;
+			if (!Input.GetButton(jump))
 			{
-				transform.rotation = Quaternion.Euler(new Vector3(0, leftArrow ? -90 : 90, 0));
-				if (!crouching)
-				{
-					transform.position += transform.forward * Time.deltaTime * m_MovementSpeed;
-					m_Animator.SetBool("Forward", true);
-				}
-				else
-				{
-					transform.position += transform.forward * Time.deltaTime * m_CrouchSpeed;
-					m_Animator.SetBool("Forward", true);
-				}
-			} else {
-				m_Animator.SetBool("Forward", false);
-			}
-
-			bool jumpButton = Input.GetKeyDown(m_JumpKey);
-			if(jumpButton && m_IsGrounded)
-			{
-				m_Rigidbody.AddForce(new Vector3(0, jumpHeight * 1000, 0));
-				m_IsGrounded = false;
-				m_Animator.SetBool("In Air", true);
-			}
-
-			bool crouchButton = Input.GetKeyDown(m_CrouchKey);  
-			if(crouchButton)
-			{
-				crouching = true;
-				m_Collider.height = crouchHeight;
-				m_Collider.center = Vector3.up * m_Collider.height/2;
-			}
-			else if(Input.GetKeyUp(m_CrouchKey))
-			{
-				crouching = false;
-				m_Collider.height = standHeight;
-				m_Collider.center = Vector3.up * m_Collider.height/2;
-			}
+				canJump = true;
+			}			
 		}
-
-		var newVel = m_Rigidbody.velocity;
-		if (!Mathf.Approximately(0f, m_MaxVelocity.x)) 
-		{
-			newVel.x = Mathf.Clamp(newVel.x, -m_MaxVelocity.x, m_MaxVelocity.x);
-		}
-		if (!Mathf.Approximately(0f, m_MaxVelocity.y)) 
-		{
-			newVel.y = Mathf.Clamp(newVel.y, -m_MaxVelocity.y, m_MaxVelocity.y);
-		}
-		m_Rigidbody.velocity = newVel;
-		
 	}
 
-	void OnCollisionEnter(Collision collision) {
-		if (collision.gameObject.tag == "Platform")
+	void OnCollisionExit (Collision col) {
+		if (col.gameObject.tag == "Platform")
 		{
-			m_IsGrounded = true;
-			m_Animator.SetBool("In Air", false);
+			onGround = false;
+			canJump = false;
 		}
+	}
+
+	public void OnAnimatorMove()
+	{
+		if (onGround && Time.deltaTime > 0)
+		{
+			Vector3 v = (animator.deltaPosition * moveSpeed) / Time.deltaTime;
+			v.y = m_Rigidbody.velocity.y;
+			//m_Rigidbody.velocity = v;
+		}
+	}
+
+
+	void AddDamage (float amount) {
+		damage += amount;
+	}
+
+	private IEnumerator Respawn () {
+		isAlive = false;
+		Camera.main.GetComponent<CameraController>().alivePlayers--;
+		damage = 0;
+		lives--;
+		yield return new WaitForSeconds(1.2f);
+		transform.position = spawn.position;
+		transform.rotation = Quaternion.identity;
+		isAlive = true;
+		Camera.main.GetComponent<CameraController>().alivePlayers++;
+	}
+
+	private IEnumerator Attack () {
+		Move currentMove = moves[comboChain];
+		canAttack = false;
+		if (name.Contains("Kickchan"))
+		{
+			if (comboChain > 0) animator.CrossFade("Idle", 0);
+			animator.SetTrigger(currentMove.name);
+		}
+		yield return new WaitForSeconds(currentMove.hitTime);
+		Ray ray = new Ray(attackPoint.position, attackPoint.forward);
+		RaycastHit hit;
+		if (Physics.Raycast(ray, out hit, currentMove.reach))
+		{
+			PlayerController target = hit.transform.gameObject.GetComponent<PlayerController>();
+			float dmg = target.damage;
+			hit.rigidbody.AddForce((attackPoint.forward * currentMove.forwardForce + Vector3.up * currentMove.upForce) * (1 + dmg));
+			hit.transform.gameObject.GetComponent<PlayerController>().AddDamage(currentMove.damage / 100f);
+			target.hasAirControl = !currentMove.restrictAirControl;
+		}
+		Debug.DrawRay(ray.origin, ray.direction * currentMove.reach, Color.red);
+		yield return new WaitForSeconds(currentMove.duration - currentMove.hitTime);
+		comboGap = 1;
+		canAttack = true;
 	}
 }

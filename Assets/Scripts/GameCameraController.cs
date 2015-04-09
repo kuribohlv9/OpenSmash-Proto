@@ -34,7 +34,7 @@ namespace OpenSmash {
             Rect viewport = new Rect();
             // set up initial viewport for 1 target
             {
-                var target = m_Targets[0].GetComponent<Collider>().bounds;
+                var target = m_Targets[0].GetComponent<CapsuleCollider>().bounds;
                 var center = target.center;
                 var extent = target.extents;
                 viewport.xMin = center.x - extent.x;
@@ -44,8 +44,8 @@ namespace OpenSmash {
             }
             // add in the other targets
             for (var i = 1; i < m_Targets.Length; ++i) {
-                if (m_Targets[i] == null || !m_Targets[i].GetComponent<Controller>().isAlive) continue;
-                var target = m_Targets[i].GetComponent<Collider>().bounds;
+                if (!m_Targets[i].GetComponent<PlayerController>().isAlive) continue;
+                var target = m_Targets[i].GetComponent<CapsuleCollider>().bounds;
                 var center = target.center;
                 var extent = target.extents;
 
