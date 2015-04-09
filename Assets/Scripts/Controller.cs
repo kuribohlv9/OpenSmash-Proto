@@ -48,7 +48,7 @@ public class Controller : MonoBehaviour {
 	void Start () {
 		moveDatabase = Camera.main.GetComponent<MoveDatabase>();
 		moves[0] = moveDatabase.Get("Punch Left");
-		moves[1] = moveDatabase.Get("Punch Right");
+		moves[1] = moveDatabase.Get("Punch Left");
 		moves[2] = moveDatabase.Get("Kick");
 
 		rigidbody = GetComponent<Rigidbody>();
@@ -98,13 +98,16 @@ public class Controller : MonoBehaviour {
 			crouching = true;
 			collider.height = crouchHeight;
 			collider.center = Vector3.up * collider.height/2;
+			moveSpeed = moveSpeedBase;
 		}
 		else if ((Input.GetButtonUp(crouch)))
 		{
 			crouching = false;
 			collider.height = standHeight;
 			collider.center = Vector3.up * collider.height/2;
+			moveSpeed = moveSpeedBase * crouchSpeed;
 		}
+		attackPoint.localPosition = Vector3.up * collider.height * 0.6f;
 
 	//Running
 		if (Input.GetButton(horizontal))
@@ -135,16 +138,6 @@ public class Controller : MonoBehaviour {
 		{
 			if (comboGap > 0) comboChain = (comboChain+1) % moves.Length;
 			StartCoroutine("Attack");
-		}
-
-	
-		if (!crouching)
-		{
-			moveSpeed = moveSpeedBase;
-		}
-		else
-		{
-			moveSpeed = moveSpeedBase * crouchSpeed;
 		}
 
 		if (transform.position.y < -20)
@@ -196,7 +189,7 @@ public class Controller : MonoBehaviour {
 		isAlive = false;
 		damage = 0;
 		lives--;
-		yield return new WaitForSeconds(2);
+		yield return new WaitForSeconds(1.2f);
 		transform.position = spawn.position;
 		transform.rotation = Quaternion.identity;
 		isAlive = true;
@@ -205,6 +198,11 @@ public class Controller : MonoBehaviour {
 	private IEnumerator Attack () {
 		Move currentMove = moves[comboChain];
 		canAttack = false;
+		if (name.Contains("Kickchan"))
+		{
+			if (comboChain > 0) animator.CrossFade("Idle", 0);
+			animator.SetTrigger(currentMove.name);
+		}
 		yield return new WaitForSeconds(currentMove.hitTime);
 		Ray ray = new Ray(attackPoint.position, attackPoint.forward);
 		RaycastHit hit;
