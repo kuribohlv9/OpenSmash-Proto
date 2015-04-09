@@ -42,7 +42,7 @@ public class PlayerController : MonoBehaviour {
 	public float jumpPower = 400f;
 
 	public bool onGround = true;
-	public bool onSpawningPlatform = true;
+	public bool onSpawningPlatform = false;
 	public bool canJump = true;
 	public bool canDrop = false;
 	public bool moving = false;
