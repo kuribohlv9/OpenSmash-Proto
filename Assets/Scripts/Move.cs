@@ -10,7 +10,7 @@ public class Move {
 	public float reach = 0.5f;
 	public int upForce = 0;
 	public int forwardForce = 0;
-	public bool restrictAirControl = false;
+	public float restrictAirControl = 0;
 
 	public Move () {
 	}

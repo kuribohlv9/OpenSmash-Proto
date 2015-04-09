@@ -15,7 +15,7 @@ public class MoveDatabase : MonoBehaviour {
 		move.duration = 0.6f;
 		move.damage = 7.5f;
 		move.reach = 0.8f;
-		move.forwardForce = 150;
+		move.forwardForce = 100;
 
 		moves.Add(new Move());
 		move = moves[moves.Count-1];
@@ -23,7 +23,7 @@ public class MoveDatabase : MonoBehaviour {
 		move.hitTime = 0.1f;
 		move.duration = 0.5f;
 		move.damage = 10f;
-		move.forwardForce = 180;
+		move.forwardForce = 125;
 
 		moves.Add(new Move());
 		move = moves[moves.Count-1];
@@ -32,9 +32,9 @@ public class MoveDatabase : MonoBehaviour {
 		move.duration = 0.7f;
 		move.damage = 15f;
 		move.reach = 1;
-		move.forwardForce = 250;
-		move.upForce = 200;
-		move.restrictAirControl = true;
+		move.forwardForce = 150;
+		move.upForce = 100;
+		move.restrictAirControl = 1;
 	}
 
 	public Move Get (string name) {
