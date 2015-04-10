@@ -262,7 +262,7 @@ public class PlayerController : MonoBehaviour {
 	private IEnumerator Attack () {
 		Move currentMove = moves[comboChain];
 		canAttack = false;
-		if (name == "Kick Chan")
+		if (name == "Unity Chan")
 		{
 			if (comboChain > 0) animator.CrossFade("Idle", 0);
 			animator.SetTrigger(currentMove.name);
