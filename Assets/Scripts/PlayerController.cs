@@ -18,6 +18,8 @@ public class PlayerController : MonoBehaviour {
 	public Move[] moves = new Move[3];
 	public float comboGap = 0;
 	public int comboChain = 0;
+	public int midAirJumps = 1;
+	public int midAirJumpsMax = 1;
 
 	public float damage = 0;
 	public int lives = 4;
@@ -43,6 +45,7 @@ public class PlayerController : MonoBehaviour {
 
 	public bool onGround = true;
 	public bool onSpawningPlatform = false;
+	public bool onLedge = false;
 	public bool canJump = true;
 	public bool canDrop = false;
 	public bool moving = false;
@@ -104,9 +107,11 @@ public class PlayerController : MonoBehaviour {
 	}
 	
 	void Update () {
+	//Combo Chain Timer
 		if (comboGap > 0) comboGap = Mathf.Clamp(comboGap - Time.deltaTime, 0, 1);
 		else comboChain = 0;
 
+	//Respawn Incincibility
 		if (invincibility > 0)
 		{
 			invincibility = Mathf.Clamp(invincibility - Time.deltaTime, 0, 10);
@@ -117,6 +122,7 @@ public class PlayerController : MonoBehaviour {
 			//enable effect
 		}
 
+	//Airstun decrease
 		if (noAirControl > 0)
 		{
 			noAirControl = Mathf.Clamp(noAirControl - Time.deltaTime, 0, 10);
@@ -127,14 +133,45 @@ public class PlayerController : MonoBehaviour {
 			}
 		}
 
-		if (!isAlive) return;
-	//Jumping
-		if (Input.GetButtonDown(jump) && canJump)
+		if (!isAlive) return; //if KO'd no input
+	//Ledge Grab
+		if (onLedge)
 		{
-			onGround = false;
-			m_Rigidbody.AddForce(new Vector3(0, 1, 0) * jumpPower);
+			if (Input.GetButtonDown(horizontal))
+			{
+				if (Input.GetAxis(horizontal) < 0 && transform.eulerAngles.y > 180 || Input.GetAxis(horizontal) > 0 && transform.eulerAngles.y < 180)
+				{
+					//climb code
+				}
+				if (Input.GetAxis(horizontal) > 0 && transform.eulerAngles.y > 180 || Input.GetAxis(horizontal) < 0 && transform.eulerAngles.y < 180)
+				{
+					GrabLedge(false);
+				}
+			}
+
+			if (Input.GetButtonDown(crouch))
+			{
+				GrabLedge(false);
+			}
+
+			if (Input.GetButtonDown(jump))
+			{
+				GrabLedge(false);
+				m_Rigidbody.AddForce(new Vector3(0, 1, 0) * jumpPower);
+			}
+			return;
 		}
 
+	//Jumping
+		if (Input.GetButtonDown(jump) && canJump && midAirJumps >= 0)
+		{
+			onGround = false;
+			m_Rigidbody.velocity = Vector3.zero;
+			m_Rigidbody.AddForce(new Vector3(0, 1, 0) * jumpPower);
+			midAirJumps--;
+		}
+
+	//Jump off the Spawning Platform
 		if (invincibility > 0)
 		{
 			if (GetAnyKey())
@@ -178,7 +215,7 @@ public class PlayerController : MonoBehaviour {
 		else
 		{
 			moving = false;
-			if (onGround)
+			if (noAirControl == 0)
 			{
 				m_Rigidbody.velocity = new Vector3(0, m_Rigidbody.velocity.y, 0);
 			}
@@ -211,6 +248,7 @@ public class PlayerController : MonoBehaviour {
 			if (!Input.GetButton(jump))
 			{
 				canJump = true;
+				midAirJumps = midAirJumpsMax;
 			}
 
 			if (col.gameObject.GetComponent<MeshCollider>())
@@ -224,7 +262,6 @@ public class PlayerController : MonoBehaviour {
 		if (col.gameObject.tag == "Platform")
 		{
 			onGround = false;
-			canJump = false;
 		}
 	}
 
@@ -292,6 +329,13 @@ public class PlayerController : MonoBehaviour {
 		m_Rigidbody.useGravity = !active;
 		spawnPlatform.SetActive(active);
 		canJump = active;
+	}
+
+	public void GrabLedge (bool active) {
+		onLedge = active;		
+		m_Rigidbody.useGravity = !active;
+		m_Rigidbody.velocity = Vector3.zero;
+		midAirJumps = 0;
 	}
 
 	bool GetAnyKey () {		
