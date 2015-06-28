@@ -1,16 +1,24 @@
 ﻿using UnityEngine;
+using System;
 using System.Collections;
 
+[RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(CapsuleCollider))]
+[RequireComponent(typeof(Animator))]
 public class PlayerController : MonoBehaviour {
-	private Transform rightHand;
-	private Transform leftHand;
-	private Transform attackPoint;
-	private Transform spawn;
-	private GameObject spawnPlatform;
 
-	private Rigidbody m_Rigidbody = new Rigidbody();
-	private CapsuleCollider m_Collider = new CapsuleCollider();
-	private Animator animator;
+    private const float MAX_DAMAGE = 999f;
+    private const float MIN_DAMAGE = 0f;
+
+	private Transform _rightHand;
+	private Transform _leftHand;
+	private Transform _attackPoint;
+	private Transform _respawn;
+	private GameObject _spawnPlatform;
+
+	private Rigidbody _rigidbody;
+	private CapsuleCollider _hitbox;
+	private Animator _animator;
 
 	public int playerNumber = 0;
 
@@ -18,8 +26,21 @@ public class PlayerController : MonoBehaviour {
 	public Move[] moves = new Move[3];
 	public float comboGap = 0;
 	public int comboChain = 0;
-	public int midAirJumps = 1;
-	public int midAirJumpsMax = 1;
+
+	private int currentJumpCount = 1;
+
+    [SerializeField]
+	private int maxJumpCount = 1;
+
+    [SerializeField]
+    private float baseJumpPower = 400f;
+
+    /// <summary>
+    /// An animation curve to determine how powerful consecutive jump is. This value is a multiplier
+    /// </summary>
+    [SerializeField]
+    [Tooltip("An animation curve to determine how powerful consecutive jump is. This value is a multiplier to Base Jump Power. 0.0 is the first jump. 1.0 is the last.")]
+    private AnimationCurve jumpPower;
 
 	public float damage = 0;
 	public int lives = 4;
@@ -41,28 +62,36 @@ public class PlayerController : MonoBehaviour {
 
 	private float standHeight;
 	public float crouchHeight = 1f;
-	public float jumpPower = 400f;
 
-	public bool onGround = true;
-	public bool onSpawningPlatform = false;
-	public bool onLedge = false;
-	public bool canJump = true;
-	public bool canDrop = false;
-	public bool moving = false;
-	public bool crouching = false;
-	public float noAirControl = 0;
-	public bool canAttack = true;
+	private bool grounded = true;
+    private bool onSpawningPlatform = false;
+    private bool onLedge = false;
+    private bool canJump = true;
+    private bool canDrop = false;
+    private bool moving = false;
+    private bool crouching = false;
+    private float noAirControl = 0;
+    private bool canAttack = true;
 
-	void Start () {
+    public event Action OnDeath;
+    public event Action OnHit;
+    public event Action OnJump;
+
+    private void Awake() {
+        _rigidbody = GetComponent<Rigidbody>();
+        _hitbox = GetComponent<CapsuleCollider>();
+        _animator = GetComponent<Animator>();
+    }
+
+    private void Start () {
 		GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
 
-		for (int i = 0; i < players.Length; i++)
+		for (var i = 0; i < players.Length; i++)
 		{
-			if (players[i] == gameObject)
-			{
-				playerNumber = i;
-				break;
-			}
+		    if (players[i] != gameObject)
+		        continue;
+		    playerNumber = i;
+		    break;
 		}		
 
 		moveDatabase = Camera.main.GetComponent<MoveDatabase>();
@@ -70,10 +99,7 @@ public class PlayerController : MonoBehaviour {
 		moves[1] = moveDatabase.Get("Punch Left");
 		moves[2] = moveDatabase.Get("Kick");
 
-		m_Rigidbody = GetComponent<Rigidbody>();
-		m_Collider = GetComponent<CapsuleCollider>();
-		animator = GetComponent<Animator>();
-		standHeight = m_Collider.height;
+		standHeight = _hitbox.height;
 
 		//maybe for fancy hit registration later
 		/*foreach (Transform child in GetComponentsInChildren<Transform>())
@@ -90,9 +116,7 @@ public class PlayerController : MonoBehaviour {
 				}
 			}
 		}*/
-		attackPoint = transform.Find("AttackPoint");
-		spawn = GameObject.Find("Spawn " + playerNumber).transform;
-		spawnPlatform = spawn.Find("Platform").gameObject;
+		_attackPoint = transform.Find("AttackPoint");
 
 		horizontal = "Horizontal " + playerNumber;
 		jump = "Jump " + playerNumber;
@@ -100,10 +124,6 @@ public class PlayerController : MonoBehaviour {
 		attack = "Attack " + playerNumber;
 		special = "Special " + playerNumber;
 		shield = "Shield " + playerNumber;
-
-		GameObject identifier = Instantiate(Resources.Load<GameObject>("Prefabs/Identifier"), Vector3.zero, Quaternion.identity) as GameObject;
-		identifier.GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Textures/P" + (playerNumber + 1));
-		identifier.GetComponent<StickToPlayer>().player = transform;
 	}
 	
 	void Update () {
@@ -149,59 +169,48 @@ public class PlayerController : MonoBehaviour {
 				}
 			}
 
-			if (Input.GetButtonDown(crouch))
+            if (Input.GetButtonDown(jump))
+            {
+                GrabLedge(false);
+                Jump();
+            }
+			else if (Input.GetButtonDown(crouch))
 			{
 				GrabLedge(false);
-			}
-
-			if (Input.GetButtonDown(jump))
-			{
-				GrabLedge(false);
-				m_Rigidbody.AddForce(new Vector3(0, 1, 0) * jumpPower);
 			}
 			return;
 		}
 
 	//Jumping
-		if (Input.GetButtonDown(jump) && canJump && midAirJumps >= 0)
-		{
-			onGround = false;
-			m_Rigidbody.velocity = Vector3.zero;
-			m_Rigidbody.AddForce(new Vector3(0, 1, 0) * jumpPower);
-			midAirJumps--;
-		}
+		if (Input.GetButtonDown(jump) && canJump && currentJumpCount <= maxJumpCount)
+            Jump();
 
 	//Jump off the Spawning Platform
-		if (invincibility > 0)
-		{
-			if (GetAnyKey())
-			{
-				SetSpawningPlatform(false);
-			}
-		}
+		if (invincibility > 0 && GetAnyKey())
+			SetSpawningPlatform(false);
 
 	//Crouching
 		if (Input.GetButton(crouch))
 		{
 			crouching = true;
-			m_Collider.height = crouchHeight;
-			m_Collider.center = Vector3.up * m_Collider.height/2;
+			_hitbox.height = crouchHeight;
+			_hitbox.center = Vector3.up * _hitbox.height/2;
 			moveSpeed = moveSpeedBase * crouchSpeed;
 		}
 		else if ((Input.GetButtonUp(crouch)))
 		{
 			crouching = false;
-			m_Collider.height = standHeight;
-			m_Collider.center = Vector3.up * m_Collider.height/2;
+			_hitbox.height = standHeight;
+			_hitbox.center = Vector3.up * _hitbox.height/2;
 			moveSpeed = moveSpeedBase;
 		}
-		attackPoint.localPosition = Vector3.up * m_Collider.height * 0.6f;
+		_attackPoint.localPosition = Vector3.up * _hitbox.height * 0.6f;
 
 	//Running
 		if (Input.GetButton(horizontal) && noAirControl == 0)
 		{
 			moving = true;
-			m_Rigidbody.velocity = new Vector3(Input.GetAxis(horizontal) * moveSpeed * Time.deltaTime * 250, m_Rigidbody.velocity.y, 0);
+			_rigidbody.velocity = new Vector3(Input.GetAxis(horizontal) * moveSpeed * Time.deltaTime * 250, _rigidbody.velocity.y, 0);
 
 			if (Input.GetAxis(horizontal) > 0)
 			{
@@ -217,7 +226,7 @@ public class PlayerController : MonoBehaviour {
 			moving = false;
 			if (noAirControl == 0)
 			{
-				m_Rigidbody.velocity = new Vector3(0, m_Rigidbody.velocity.y, 0);
+				_rigidbody.velocity = new Vector3(0, _rigidbody.velocity.y, 0);
 			}
 		}
 
@@ -225,87 +234,102 @@ public class PlayerController : MonoBehaviour {
 		if (Input.GetButtonDown(attack) && canAttack)
 		{
 			if (comboGap > 0) comboChain = (comboChain+1) % moves.Length;
-			StartCoroutine("Attack");
+			StartCoroutine(Attack());
 		}
 
+        //Find better solution
 		if (transform.position.y < -10)
-		{
-			StartCoroutine("Respawn");
-		}
+		    Die();
 
 	//Animations
-		animator.SetBool("Forward", moving);
-		//animator.SetBool("Crouch", crouching);
-		if (onSpawningPlatform) animator.SetBool("In Air", false);
-		else animator.SetBool("In Air", !onGround);
+		_animator.SetBool("Forward", moving);
+		//_animator.SetBool("Crouch", crouching);
+		if (onSpawningPlatform) _animator.SetBool("In Air", false);
+		else _animator.SetBool("In Air", !grounded);
 	}
 
 	void OnCollisionStay (Collision col) {
-		if (col.gameObject.tag == "Platform")
-		{
-			onGround = true;
-			noAirControl = 0;
-			if (!Input.GetButton(jump))
-			{
-				canJump = true;
-				midAirJumps = midAirJumpsMax;
-			}
+	    if (!col.gameObject.CompareTag("Platform"))
+	        return;
+	    grounded = true;
+	    noAirControl = 0;
+	    if (!Input.GetButton(jump))
+	    {
+	        canJump = true;
+	        currentJumpCount = 0;
+	    }
 
-			if (col.gameObject.GetComponent<MeshCollider>())
-			{
-				canDrop = true;
-			}	
+	    if (col.gameObject.GetComponent<MeshCollider>())
+	    {
+	        canDrop = true;
+	    }
+	}
+
+    void OnCollisionExit(Collision col)
+    {
+        if (col.gameObject.CompareTag("Platform"))
+		{
+			grounded = false;
 		}
 	}
 
-	void OnCollisionExit (Collision col) {
-		if (col.gameObject.tag == "Platform")
-		{
-			onGround = false;
-		}
-	}
+    public void Jump() {
+        if (onLedge)
+            GrabLedge(false);
+        if (!canJump || currentJumpCount >= maxJumpCount)
+            return;
+        grounded = false;
+        _rigidbody.velocity = Vector3.zero;
+        float actualJumpPower = baseJumpPower;
 
-	public void OnAnimatorMove()
+        if (maxJumpCount <= 1)
+            actualJumpPower *= jumpPower.Evaluate(0f);
+        else
+            actualJumpPower *= jumpPower.Evaluate((float) currentJumpCount/(float) (maxJumpCount - 1));
+                
+        if(actualJumpPower < 0)
+            actualJumpPower = 0;
+        _rigidbody.AddForce(Vector3.up * actualJumpPower);
+        currentJumpCount++;
+        if(OnJump != null)
+            OnJump();
+    }
+
+    public void OnAnimatorMove()
 	{
-		if (onGround && Time.deltaTime > 0)
-		{
-			Vector3 v = (animator.deltaPosition * moveSpeed) / Time.deltaTime;
-			v.y = m_Rigidbody.velocity.y;
-			//m_Rigidbody.velocity = v;
-		}
+	    if (!grounded || !(Time.deltaTime > 0))
+	        return;
+	    Vector3 v = (_animator.deltaPosition * moveSpeed) / Time.deltaTime;
+	    v.y = _rigidbody.velocity.y;
+	    //_rigidbody.velocity = v;
 	}
 
+    public void Die() {
+        lives--;
+        if(OnDeath != null)
+            OnDeath();
+        if (lives > 0)
+            StartCoroutine(Respawn());
+    }
 
-	void AddDamage (float amount) {
-		damage += amount;
-	}
+    public void Damage(float amount) {
+        damage = Mathf.Clamp(damage + amount, MIN_DAMAGE, MAX_DAMAGE);
+    }
 
-	private IEnumerator Respawn () {		
-		lives--;
-		damage = 0;
-		Camera.main.GetComponent<CameraController>().Shake();
-		Camera.main.GetComponent<CameraController>().alivePlayers--;
-		isAlive = false;
-		yield return new WaitForSeconds(1.25f);
-		SetSpawningPlatform(true);
-		transform.position = spawn.transform.position;
-		transform.rotation = Quaternion.Euler(0, 180, 0);
-		invincibility = invincibilityTimer;
-		isAlive = true;
-		m_Rigidbody.velocity = Vector3.zero;
-		Camera.main.GetComponent<CameraController>().alivePlayers++;
-	}
+    public void Heal(float amount) {
+        damage = Mathf.Clamp(damage - amount, MIN_DAMAGE, MAX_DAMAGE);
+    }
 
 	private IEnumerator Attack () {
 		Move currentMove = moves[comboChain];
 		canAttack = false;
 		if (name == "Unity Chan")
 		{
-			if (comboChain > 0) animator.CrossFade("Idle", 0);
-			animator.SetTrigger(currentMove.name);
+			if (comboChain > 0) _animator.CrossFade("Idle", 0);
+			_animator.SetTrigger(currentMove.name);
 		}
 		yield return new WaitForSeconds(currentMove.hitTime);
-		Ray ray = new Ray(attackPoint.position, attackPoint.forward);
+		Ray ray = new Ray(_attackPoint.position, _attackPoint.forward);
 		RaycastHit hit;
 		if (Physics.Raycast(ray, out hit, currentMove.reach))
 		{
@@ -313,8 +337,8 @@ public class PlayerController : MonoBehaviour {
 			if (target.invincibility == 0)
 			{
 				float dmg = target.damage;
-				hit.rigidbody.AddForce((attackPoint.forward * currentMove.forwardForce + Vector3.up * currentMove.upForce) * (1 + dmg));
-				hit.transform.gameObject.GetComponent<PlayerController>().AddDamage(currentMove.damage / 100f);
+				hit.rigidbody.AddForce((_attackPoint.forward * currentMove.forwardForce + Vector3.up * currentMove.upForce) * (1 + dmg));
+				hit.transform.gameObject.GetComponent<PlayerController>().Damage(currentMove.damage / 100f);
 				target.noAirControl = currentMove.restrictAirControl;
 			}
 		}
@@ -323,19 +347,35 @@ public class PlayerController : MonoBehaviour {
 		comboGap = 1;
 		canAttack = true;
 	}
+    private IEnumerator Respawn()
+    {
+        lives--;
+        damage = MIN_DAMAGE;
+        Camera.main.GetComponent<CameraController>().Shake();
+        Camera.main.GetComponent<CameraController>().alivePlayers--;
+        isAlive = false;
+        yield return new WaitForSeconds(1.25f);
+        SetSpawningPlatform(true);
+        transform.position = _respawn.transform.position;
+        transform.rotation = Quaternion.Euler(0, 180, 0);
+        invincibility = invincibilityTimer;
+        isAlive = true;
+        _rigidbody.velocity = Vector3.zero;
+        Camera.main.GetComponent<CameraController>().alivePlayers++;
+    }
 
 	void SetSpawningPlatform (bool active) {
 		onSpawningPlatform = active;
-		m_Rigidbody.useGravity = !active;
-		spawnPlatform.SetActive(active);
+		_rigidbody.useGravity = !active;
+		_spawnPlatform.SetActive(active);
 		canJump = active;
 	}
 
 	public void GrabLedge (bool active) {
 		onLedge = active;		
-		m_Rigidbody.useGravity = !active;
-		m_Rigidbody.velocity = Vector3.zero;
-		midAirJumps = 0;
+		_rigidbody.useGravity = !active;
+		_rigidbody.velocity = Vector3.zero;
+		currentJumpCount = 0;
 	}
 
 	bool GetAnyKey () {		
