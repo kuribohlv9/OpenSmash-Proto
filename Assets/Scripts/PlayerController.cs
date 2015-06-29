@@ -35,6 +35,8 @@ public class PlayerController : MonoBehaviour {
     [SerializeField]
     private float baseJumpPower = 400f;
 
+    [SerializeField]
+    private float maxFallingSpeed = -5;
     /// <summary>
     /// An animation curve to determine how powerful consecutive jump is. This value is a multiplier
     /// </summary>
@@ -77,6 +79,8 @@ public class PlayerController : MonoBehaviour {
     public event Action OnHit;
     public event Action OnJump;
 
+    private bool fastFalling = false;
+
     private void Awake() {
         _rigidbody = GetComponent<Rigidbody>();
         _hitbox = GetComponent<CapsuleCollider>();
@@ -100,6 +104,8 @@ public class PlayerController : MonoBehaviour {
 		moves[2] = moveDatabase.Get("Kick");
 
 		standHeight = _hitbox.height;
+
+        moveSpeed = moveSpeedBase;
 
 		//maybe for fancy hit registration later
 		/*foreach (Transform child in GetComponentsInChildren<Transform>())
@@ -210,7 +216,16 @@ public class PlayerController : MonoBehaviour {
 		if (Input.GetButton(horizontal) && noAirControl == 0)
 		{
 			moving = true;
-			_rigidbody.velocity = new Vector3(Input.GetAxis(horizontal) * moveSpeed * Time.deltaTime * 250, _rigidbody.velocity.y, 0);
+            if(grounded)
+            {
+                //Kuri: New movement is not optimized, but it feels better than the previous.
+			    _rigidbody.velocity = Vector3.Lerp(_rigidbody.velocity, new Vector3(Input.GetAxis(horizontal) * moveSpeed, _rigidbody.velocity.y, 0), 0.1f);
+            }
+            else
+            {
+                //Kuri: Less control in the air.
+                _rigidbody.velocity = Vector3.Lerp(_rigidbody.velocity, new Vector3(Input.GetAxis(horizontal) * moveSpeed, _rigidbody.velocity.y, 0), 0.07f);
+            }
 
 			if (Input.GetAxis(horizontal) > 0)
 			{
@@ -224,7 +239,7 @@ public class PlayerController : MonoBehaviour {
 		else
 		{
 			moving = false;
-			if (noAirControl == 0)
+			if (noAirControl == 0 && grounded)
 			{
 				_rigidbody.velocity = new Vector3(0, _rigidbody.velocity.y, 0);
 			}
@@ -246,6 +261,31 @@ public class PlayerController : MonoBehaviour {
 		//_animator.SetBool("Crouch", crouching);
 		if (onSpawningPlatform) _animator.SetBool("In Air", false);
 		else _animator.SetBool("In Air", !grounded);
+
+    //KURI TESTING AREA
+
+    //Handle FastFalling
+        if(!grounded && Input.GetButton(crouch) && _rigidbody.velocity.y < 0)
+        {
+            //Fastfall only in the air and if we have downwards velocity
+            fastFalling = true;
+        }
+
+    //Handle Gravity
+        if(!grounded)
+        {
+            //Kuri: Gravity builds up to maximum fallspeed value.
+            //Kuri: Current fallspeed matches Mario from smash 4 while using Unity-chan.
+            //Kuri: Still need that gravity disabling a bit during the start of the jump...
+            if(fastFalling)
+            {
+                _rigidbody.velocity = new Vector3(_rigidbody.velocity.x, maxFallingSpeed * 2, _rigidbody.velocity.z);
+            }
+            else if(_rigidbody.velocity.y > maxFallingSpeed)
+            {
+                _rigidbody.velocity = new Vector3(_rigidbody.velocity.x, Mathf.Clamp(_rigidbody.velocity.y - 0.4f, maxFallingSpeed, 100), _rigidbody.velocity.z);
+            }
+        }
 	}
 
 	void OnCollisionStay (Collision col) {
@@ -279,7 +319,8 @@ public class PlayerController : MonoBehaviour {
         if (!canJump || currentJumpCount >= maxJumpCount)
             return;
         grounded = false;
-        _rigidbody.velocity = Vector3.zero;
+        //Kuri: noticed that smash does this thing below so added it
+        _rigidbody.velocity = new Vector3(Input.GetAxis(horizontal) * moveSpeed, 0, _rigidbody.velocity.z);
         float actualJumpPower = baseJumpPower;
 
         if (maxJumpCount <= 1)
@@ -293,6 +334,8 @@ public class PlayerController : MonoBehaviour {
         currentJumpCount++;
         if(OnJump != null)
             OnJump();
+
+        fastFalling = false;
     }
 
     public void OnAnimatorMove()
